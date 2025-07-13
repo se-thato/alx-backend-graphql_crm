@@ -1,5 +1,6 @@
 from datetime import datetime
-import requests
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 def log_crm_heartbeat():
     timestamp = datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
@@ -9,49 +10,48 @@ def log_crm_heartbeat():
     with open("/tmp/crm_heartbeat_log.txt", "a") as f:
         f.write(log_message + "\n")
 
-    # Optional: Query GraphQL hello field
+    # Optional: Query GraphQL hello field using gql
     try:
-        response = requests.post(
-            "http://localhost:8000/graphql",
-            json={"query": "{ hello }"},
-            timeout=5
+        transport = RequestsHTTPTransport(
+            url="http://localhost:8000/graphql",
+            verify=True,
+            retries=3,
         )
-        if response.status_code == 200:
-            print("GraphQL 'hello' query success:", response.json())
-        else:
-            print("GraphQL 'hello' query failed:", response.status_code)
+        client = Client(transport=transport, fetch_schema_from_transport=False)
+        query = gql("{ hello }")
+        result = client.execute(query)
+        print("GraphQL 'hello' query success:", result)
     except Exception as e:
         print("Error querying GraphQL hello:", str(e))
-
-
 
 
 def update_low_stock():
     LOG_FILE = "/tmp/low_stock_updates_log.txt"
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    mutation = """
+    mutation = gql("""
     mutation {
       updateLowStockProducts {
         success
         updatedProducts
       }
     }
-    """
+    """)
 
     try:
-        response = requests.post(
-            "http://localhost:8000/graphql",
-            json={"query": mutation},
-            timeout=10
+        transport = RequestsHTTPTransport(
+            url="http://localhost:8000/graphql",
+            verify=True,
+            retries=3,
         )
-        data = response.json()
+        client = Client(transport=transport, fetch_schema_from_transport=False)
+        data = client.execute(mutation)
 
-        if "errors" in data:
-            log_msg = f"{timestamp} - ERROR: {data['errors']}"
-        else:
-            updated = data["data"]["updateLowStockProducts"]["updatedProducts"]
+        if "updateLowStockProducts" in data:
+            updated = data["updateLowStockProducts"].get("updatedProducts", [])
             log_msg = f"{timestamp} - Updated Products:\n" + "\n".join(updated)
+        else:
+            log_msg = f"{timestamp} - ERROR: Unexpected response format: {data}"
 
     except Exception as e:
         log_msg = f"{timestamp} - EXCEPTION: {str(e)}"
