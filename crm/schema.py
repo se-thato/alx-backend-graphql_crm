@@ -26,7 +26,7 @@ class OrderType(DjangoObjectType):
 class CustomerInput(graphene.InputObjectType):
     name = graphene.String(required=True)
     email = graphene.String(required=True)
-    phone = graphene.String()
+    phone = graphene.String() 
 
 class ProductInput(graphene.InputObjectType):
     name = graphene.String(required=True)
@@ -60,7 +60,8 @@ class CreateCustomer(graphene.Mutation):
         if input.phone:
             phone_pattern = r'^(\+\d{10,15}|(\d{3}-\d{3}-\d{4}))$'
             if not re.match(phone_pattern, input.phone):
-                errors.append("Invalid phone format.")
+                errors.append(
+                    "Invalid phone format.")
         if errors:
             return CreateCustomer(customer=None, message=None, errors=errors)
         customer = Customer.objects.create(
