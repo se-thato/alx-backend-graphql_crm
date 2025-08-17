@@ -4,6 +4,7 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    last_order_date = models.DateTimeField(null=True, blank=True)
 
 class Product(models.Model):
     name = models.CharField(max_length=100)

@@ -10,6 +10,9 @@ import re
 from graphene_django.filter import DjangoFilterConnectionField
 from .filters import CustomerFilter, ProductFilter, OrderFilter
 
+import graphene
+from crm.models import Product 
+
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
@@ -196,8 +199,31 @@ class Query(graphene.ObjectType):
         return qs
 
 
+class UpdateLowStockProducts(graphene.Mutation):
+    class Output(graphene.ObjectType):
+        success = graphene.String()
+        updated_products = graphene.List(graphene.String)
+
+    @classmethod
+    def mutate(cls, root, info):
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        updated_names = []
+
+        for product in low_stock_products:
+            product.stock += 10
+            product.save()
+            updated_names.append(f"{product.name} (stock: {product.stock})")
+
+        return UpdateLowStockProducts(
+            success="Low stock products successfully restocked.",
+            updated_products=updated_names
+        )
+
+
 class Mutation(graphene.ObjectType):
     create_customer = CreateCustomer.Field()
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()
+
